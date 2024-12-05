@@ -5,7 +5,8 @@
 PROJECT_NAME = ppo_balancer
 
 # Adjust the number of training env. for best performance on your machine:
-NB_TRAINING_ENVS = 6
+NB_TRAINING_ENVS = 8
+#Keeps going up till 8
 
 # Programs
 BAZEL = $(CURDIR)/tools/bazelisk
@@ -77,10 +78,10 @@ test_policy:  ## test locally saved policy
 	$(PYTHON) ppo_balancer/run.py
 
 train:  ## train a new policy
-	$(BAZEL) run //ppo_balancer:train -- --nb-envs $(NB_TRAINING_ENVS)
+	$(BAZEL) run //ppo_balancer:train -- --nb-envs $(NB_TRAINING_ENVS) 
 
 train_and_show:  ## train a new policy with simulations shown (slower)
-	$(BAZEL) run //ppo_balancer:train -- --nb-envs $(NB_TRAINING_ENVS) --show
+	$(BAZEL) run //ppo_balancer:train -- --nb-envs $(NB_TRAINING_ENVS)  --show
 
 # Packing and unpacking conda environment for an offline Upkie
 # ============================================================

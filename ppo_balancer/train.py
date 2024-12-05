@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2023 Inria
-
+import sys
 import argparse
 import datetime
 import os
@@ -11,7 +11,7 @@ import random
 import signal
 import tempfile
 from typing import Callable, List
-
+import string
 import gin
 import gymnasium
 import numpy as np
@@ -121,12 +121,7 @@ class SummaryWriterCallback(BaseCallback):
 
 
 def get_random_word():
-    with open("/usr/share/dict/words") as fh:
-        words = fh.read().splitlines()
-    word_index = random.randint(0, len(words))
-    while not words[word_index].isalnum():
-        word_index = (word_index + 1) % len(words)
-    return words[word_index]
+    return ''.join(random.choices(string.ascii_lowercase, k=6))
 
 
 def get_bullet_argv(shm_name: str, show: bool) -> List[str]:
@@ -181,9 +176,12 @@ def init_env(
             max_episode_steps=int(max_episode_duration * agent_frequency),
             frequency=agent_frequency,
             regulate_frequency=False,
-            reward=upkie.envs.rewards.WheeledInvertedPendulumReward(
+            reward=upkie.envs.rewards.RewardShaping(
                 position_weight=env_settings.reward["position_weight"],
                 velocity_weight=env_settings.reward["velocity_weight"],
+                ground_velocity_weight=env_settings.reward["ground_velocity_weight"],
+                angular_velocity_weight=env_settings.reward["angular_velocity_weight"],
+                torque_weight=env_settings.reward["torque_weight"]
             ),
             shm_name=shm_name,
             spine_config=env_settings.spine_config,
@@ -264,6 +262,9 @@ def train_policy(
         agent_dir,
         deez_runfiles.Rlocation("upkie/spines/bullet_spine"),
     )
+    print("----")
+    print(spine_path)
+    print("---")
 
     vec_env = (
         SubprocVecEnv(

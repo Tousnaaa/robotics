@@ -20,7 +20,8 @@ from stable_baselines3 import PPO
 from upkie.utils.raspi import configure_agent_process, on_raspi
 from upkie.utils.robot_state import RobotState
 from upkie.utils.robot_state_randomization import RobotStateRandomization
-
+import time
+import matplotlib.pyplot as plt
 upkie.envs.register()
 
 
@@ -68,7 +69,7 @@ def get_tip_state(
     return tip_position, tip_velocity
 
 
-def run_policy(env: gym.Wrapper, policy) -> None:
+def run_policy(env: gym.Wrapper, policy,force=0.0) -> None:
     """!
     Run the policy on a given environment.
 
@@ -78,15 +79,14 @@ def run_policy(env: gym.Wrapper, policy) -> None:
     action = np.zeros(env.action_space.shape)
     observation, info = env.reset()
     reward = 0.0
-    while True:
+    
+    for step in range(1_000_000):
         action, _ = policy.predict(observation, deterministic=True)
         tip_position, tip_velocity = get_tip_state(observation[-1])
-        env.unwrapped.log("action", action)
-        env.unwrapped.log("observation", observation[-1])
-        env.unwrapped.log("reward", reward)
-        env.unwrapped.log("tip_position", tip_position)
-        env.unwrapped.log("tip_velocity", tip_velocity)
+        
+        apply_sagittal(env,force,step)
         observation, reward, terminated, truncated, info = env.step(action)
+        
         if terminated or truncated:
             observation, info = env.reset()
 
@@ -132,9 +132,24 @@ def main(policy_path: str, training: bool) -> None:
             },
             verbose=0,
         )
-        policy.set_parameters(policy_path)
-        run_policy(env, policy)
-
+        
+        mf_time = run_policy(env, policy,0)
+        
+        
+        
+def apply_sagittal(env,force,step):
+    sag_force = np.zeros(3)
+    bullet_action = {
+            "external_forces":{
+                "torso":{
+                    "force": sag_force,
+                    "local": False,
+                }
+            }
+        }
+    if 200 <step < 400:
+        sag_force[0] = force
+    env.unwrapped.bullet_extra(bullet_action)
 
 if __name__ == "__main__":
     if on_raspi():
@@ -146,13 +161,15 @@ if __name__ == "__main__":
     # Policy parameters
     policy_path = args.policy
     if policy_path is None:
+        print(f"{agent_dir}/policy/params.zip")
         policy_path = f"{agent_dir}/policy/params.zip"
     if policy_path.endswith(".zip"):
         policy_path = policy_path[:-4]
     logging.info("Loading policy from %s.zip", policy_path)
 
     # Configuration
-    config_path = f"{os.path.dirname(policy_path)}/operative_config.gin"
+    #config_path = f"{os.path.dirname(policy_path)}/operative_config.gin"
+    config_path = policy_path[:-5] + "operative_config.gin"
     logging.info("Loading policy configuration from %s", config_path)
     gin.parse_config_file(config_path)
 
